@@ -4,7 +4,7 @@ function [innerPath, outerPath] = generatePaths(imageFile, spacing)
 
     [innerPath, outerPath] = offsetPaths(path, spacing);
     
-    % Visualize the skeleton
+    % %Visualize the skeleton
     % figure;
     % img = imread(imageFile);
     % imshow(img);

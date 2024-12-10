@@ -1,6 +1,6 @@
 function main()
     % Define round-corner rectangular track boundaries
-    [leftBoundary, rightBoundary] = generatePaths('track.png', 4);
+    [leftBoundary, rightBoundary] = generatePaths('monaco.png', 4);
     % Initialize control points (aligned with the track centerline)
     numControlPoints = 50; % Increase number for better resolution
     initialControlPoints = zeros(numControlPoints, 2);
@@ -16,7 +16,7 @@ function main()
     options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                            'MaxFunctionEvaluations', 20000, 'StepTolerance', 1e-9);
     optimizedControlPoints = fmincon(@(x) cost_function(reshape(x, [], 2), leftBoundary, rightBoundary), ...
-                                     initialControlPoints(:), [], [], [], [], [], [], [], options);
+                                     initialControlPoints(:), [], [], [], [], [], [], @(x) constraint_function(reshape(x, [], 2), leftBoundary, rightBoundary), options);
 
     % Reshape optimized points
     optimizedControlPoints = reshape(optimizedControlPoints, [], 2);
@@ -47,6 +47,18 @@ function curve = bezier_curve(controlPoints, nPoints)
     for i = 0:n
         bernstein = nchoosek(n, i) .* (1 - t).^(n - i) .* t.^i; % Bernstein basis
         curve = curve + bernstein * controlPoints(i + 1, :);
+    end
+end
+
+function [C, Ceq] = constraint_function(controlPoints, innerBoundary, outerBoundary)
+    curve = bezier_curve(controlPoints, 500);
+    C = [];
+    Ceq = [];
+    
+    for i = 1:size(curve, 1)
+        x = curve(i, 1);
+        y = curve(i, 2);
+        C = [C; min(pdist2([x, y], innerBoundary), [], 2); min(pdist2([x, y], outerBoundary), [], 2)];
     end
 end
 
