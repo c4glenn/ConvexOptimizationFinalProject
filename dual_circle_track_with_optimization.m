@@ -1,17 +1,51 @@
-function flower_shape_3D_advanced()
-    % Define parameters
-    R_outer = 20; % Radius of the outer circles
-    R_inner = 10; % Radius of the inner circle
-    straight_length = 30; % Length of the straight sections
-    num_points_circle = 100; % Number of points for the circular sections
-    num_points_straight = 50; % Number of points for the straight sections
+function flower_3d_track_with_optimization()
+    % Parameters
+    R_outer = 20; % Outer radius
+    R_inner = 15; % Inner radius
+    W = 30; % Width of straight sections
+    H = 10; % Height for elevation in 3D
+    nPointsCircle = 150; % Points for semicircles
+    nPointsLine = 150; % Points for straight sections
 
-    % Generate track boundaries
-    [leftBoundary, rightBoundary] = generate_3D_flower_shape_track(R_outer, R_inner, straight_length, num_points_circle, num_points_straight);
+    % Generate outer and inner circular arcs
+    thetaLeft = linspace(pi/2, -pi/2, nPointsCircle)'; % Semi-circle (left)
+    thetaRight = linspace(-pi/2, pi/2, nPointsCircle)'; % Semi-circle (right)
 
-    % Initial control points
-    numControlPoints = 10; % Number of Bezier control points
-    initialControlPoints = initialize_control_points(leftBoundary, rightBoundary, numControlPoints);
+    % Outer boundary
+    leftOuterArc = [-R_outer * cos(thetaLeft) - W/2, R_outer * sin(thetaLeft), linspace(0, H, nPointsCircle)'];
+    rightOuterArc = [R_outer * cos(thetaRight) + W/2, R_outer * sin(thetaRight), linspace(0, H, nPointsCircle)'];
+
+    % Inner boundary
+    leftInnerArc = [-R_inner * cos(thetaLeft) - W/2, R_inner * sin(thetaLeft), linspace(H, 0, nPointsCircle)'];
+    rightInnerArc = [R_inner * cos(thetaRight) + W/2, R_inner * sin(thetaRight), linspace(H, 0, nPointsCircle)'];
+
+    % Generate straight sections
+    leftStraightOuter = [linspace(-R_outer - W/2, R_outer + W/2, nPointsLine)', ...
+                         -R_outer * ones(nPointsLine, 1), ...
+                         linspace(0, 0, nPointsLine)'];
+    rightStraightOuter = [linspace(R_outer + W/2, -R_outer - W/2, nPointsLine)', ...
+                          R_outer * ones(nPointsLine, 1), ...
+                          linspace(H, H, nPointsLine)'];
+
+    leftStraightInner = [linspace(-R_inner - W/2, R_inner + W/2, nPointsLine)', ...
+                         -R_inner * ones(nPointsLine, 1), ...
+                         linspace(0, 0, nPointsLine)'];
+    rightStraightInner = [linspace(R_inner + W/2, -R_inner - W/2, nPointsLine)', ...
+                          R_inner * ones(nPointsLine, 1), ...
+                          linspace(H, H, nPointsLine)'];
+
+    % Combine the boundaries
+    leftBoundary = [leftOuterArc; leftStraightOuter; flipud(leftInnerArc); flipud(leftStraightInner)];
+    rightBoundary = [rightOuterArc; rightStraightOuter; flipud(rightInnerArc); flipud(rightStraightInner)];
+
+    % Initial control points (midpoints between left and right boundaries)
+    numControlPoints = 9; % Number of Bezier control points
+    initialControlPoints = zeros(numControlPoints, 3);
+    for i = 1:numControlPoints
+        idx = round((i - 1) * (size(leftBoundary, 1) - 1) / (numControlPoints - 1)) + 1;
+        idx = min(idx, min(size(leftBoundary, 1), size(rightBoundary, 1))); % Ensure idx doesn't exceed bounds
+        initialControlPoints(i, :) = (leftBoundary(idx, :) + rightBoundary(idx, :)) / 2;
+    end
 
     % Optimize the control points
     options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
@@ -19,65 +53,31 @@ function flower_shape_3D_advanced()
     optimizedControlPoints = fmincon(@(x) cost_function(reshape(x, [], 3), leftBoundary, rightBoundary), ...
                                      initialControlPoints(:), [], [], [], [], [], [], [], options);
 
-    % Reshape optimized control points
+    % Reshape optimized points
     optimizedControlPoints = reshape(optimizedControlPoints, [], 3);
 
-    % Generate the Bezier curve
-    raceLine = bezier_curve(optimizedControlPoints, 300);
+    % Generate the optimized race line
+    raceLine = bezier_curve_3d(optimizedControlPoints, 200); % Smooth Bezier curve
 
-    % Plot the track and race line in 3D
+    % Plot the results
     figure;
     hold on;
     plot3(leftBoundary(:,1), leftBoundary(:,2), leftBoundary(:,3), 'r', 'LineWidth', 2, 'DisplayName', 'Left Boundary');
     plot3(rightBoundary(:,1), rightBoundary(:,2), rightBoundary(:,3), 'b', 'LineWidth', 2, 'DisplayName', 'Right Boundary');
     plot3(raceLine(:,1), raceLine(:,2), raceLine(:,3), 'g', 'LineWidth', 2, 'DisplayName', 'Optimal Race Line');
     scatter3(optimizedControlPoints(:,1), optimizedControlPoints(:,2), optimizedControlPoints(:,3), 50, 'k', 'filled', 'DisplayName', 'Control Points');
-    legend('Location', 'best');
-    title('Advanced 3D Flower Shape Racing Track with Bezier Curve Optimization');
+    legend('Location', 'southoutside', 'Orientation', 'horizontal');
+    title('3D Flower Shape Racing Track with Bezier Curve Optimization');
     xlabel('X');
     ylabel('Y');
-    zlabel('Elevation (Z)');
+    zlabel('Z');
     grid on;
     axis equal;
-    view(3); % 3D view
     hold off;
 end
 
-function [leftBoundary, rightBoundary] = generate_3D_flower_shape_track(R_outer, R_inner, straight_length, num_points_circle, num_points_straight)
-    % Generate circular and straight sections with elevation
-    theta = linspace(0, pi, num_points_circle)';
-    
-    % Left circle
-    left_circle_outer = [-R_outer * cos(theta), R_outer * sin(theta), zeros(num_points_circle, 1)];
-    left_circle_inner = [-R_inner * cos(theta), R_inner * sin(theta), zeros(num_points_circle, 1)];
-
-    % Right circle
-    right_circle_outer = [R_outer * cos(theta), -R_outer * sin(theta), zeros(num_points_circle, 1)];
-    right_circle_inner = [R_inner * cos(theta), -R_inner * sin(theta), zeros(num_points_circle, 1)];
-
-    % Middle semi-circle
-    middle_circle_outer = [R_outer * cos(theta), R_outer * sin(theta), linspace(0, 20, num_points_circle)'];
-    middle_circle_inner = [R_inner * cos(theta), R_inner * sin(theta), linspace(0, 20, num_points_circle)'];
-
-    % Straight sections
-    straight_elevation = linspace(0, 10, num_points_straight)';
-    straight1_outer = [linspace(-R_outer, R_outer, num_points_straight)', zeros(num_points_straight, 1), straight_elevation];
-    straight1_inner = [linspace(-R_inner, R_inner, num_points_straight)', zeros(num_points_straight, 1), straight_elevation];
-
-    % Combine boundaries
-    leftBoundary = [left_circle_outer; straight1_outer; middle_circle_outer];
-    rightBoundary = [left_circle_inner; straight1_inner; middle_circle_inner];
-end
-
-function controlPoints = initialize_control_points(leftBoundary, rightBoundary, numControlPoints)
-    controlPoints = zeros(numControlPoints, 3);
-    for i = 1:numControlPoints
-        idx = round((i - 1) * (size(leftBoundary, 1) - 1) / (numControlPoints - 1)) + 1;
-        controlPoints(i, :) = (leftBoundary(idx, :) + rightBoundary(idx, :)) / 2;
-    end
-end
-
-function curve = bezier_curve(controlPoints, nPoints)
+% Function to generate Bezier curve in 3D
+function curve = bezier_curve_3d(controlPoints, nPoints)
     n = size(controlPoints, 1) - 1;
     t = linspace(0, 1, nPoints)';
     curve = zeros(nPoints, 3);
@@ -87,24 +87,26 @@ function curve = bezier_curve(controlPoints, nPoints)
     end
 end
 
+% Cost function for optimization
 function cost = cost_function(controlPoints, leftBoundary, rightBoundary)
-    curve = bezier_curve(controlPoints, 300);
+    curve = bezier_curve_3d(controlPoints, 200);
 
-    % Distance to boundaries
+    % Calculate distances to boundaries
     distToLeft = min(pdist2(curve, leftBoundary), [], 2);
     distToRight = min(pdist2(curve, rightBoundary), [], 2);
 
-    % Centerline
+    % Calculate the centerline
     centerLine = (leftBoundary + rightBoundary) / 2;
     centerLineInterp = interp1(1:size(centerLine, 1), centerLine, linspace(1, size(centerLine, 1), size(curve, 1)));
 
-    % Deviation from centerline
+    % Penalize deviation from the centerline
     distToCenter = sum(vecnorm(curve - centerLineInterp, 2, 2));
 
-    % Curvature
+    % Calculate curvature
     dCurve = gradient(curve);
     ddCurve = gradient(dCurve);
     curvature = sum(vecnorm(ddCurve, 2, 2));
 
-    cost = 0.5 * curvature + 0.5 * distToCenter;
+    % Combine into a scalar cost
+    cost = 0.4 * curvature + 0.6 * distToCenter;
 end
