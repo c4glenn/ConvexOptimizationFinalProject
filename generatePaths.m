@@ -1,4 +1,4 @@
-function [innerPath, outerPath] = generatePaths(imageFile, spacing)
+    function [innerPath, outerPath] = generatePaths(imageFile, spacing)
         % Read the input image
     path = skeletonToLoopPath(imageFile);
 
