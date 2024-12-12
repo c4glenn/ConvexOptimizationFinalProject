@@ -4,24 +4,23 @@ function [innerPath, outerPath] = generatePaths(imageFile, spacing)
 
     [innerPath, outerPath] = offsetPaths(path, spacing);
     
-    % %Visualize the skeleton
-    % figure;
-    % img = imread(imageFile);
-    % imshow(img);
-    % hold on;
-    % plot(path(:, 1), path(:, 2), 'r-', 'MarkerSize', 5);
-    % plot(innerPath(:, 1), innerPath(:, 2), 'b-', 'LineWidth', 2); % Path 1
-    % plot(outerPath(:, 1), outerPath(:, 2), 'g-', 'LineWidth', 2); % Path 2
-    % 
-    % title('Skeleton of the Path');
-    % hold off;
+    %Visualize the skeleton
+    figure;
+    %img = imread(imageFile);
+    %imshow(img);
+    hold on;
+    plot(path(:, 1), path(:, 2), 'r-', 'MarkerSize', 5);
+    plot(innerPath(:, 1), innerPath(:, 2), 'b-', 'LineWidth', 2); % Path 1
+    plot(outerPath(:, 1), outerPath(:, 2), 'g-', 'LineWidth', 2); % Path 2
+
+    title('Skeleton of the Path');
+    hold off;
 
 end
 
 function orderedPath = skeletonToLoopPath(imagePath)
     % Read the input image
     img = imread(imagePath);
-    flippedImg = flipud(img); % Flip the image vertically
 
     % Convert the image to grayscale
     grayImg = rgb2gray(img);

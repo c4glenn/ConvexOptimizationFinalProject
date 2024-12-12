@@ -1,6 +1,6 @@
 function main()
     % Define round-corner rectangular track boundaries
-    [leftBoundary, rightBoundary] = generatePaths('monaco.png', 4);
+    [leftBoundary, rightBoundary] = generatePaths('track.png', 4);
     % Initialize control points (aligned with the track centerline)
     numControlPoints = 50; % Increase number for better resolution
     initialControlPoints = zeros(numControlPoints, 2);
@@ -55,11 +55,11 @@ function [C, Ceq] = constraint_function(controlPoints, innerBoundary, outerBound
     C = [];
     Ceq = [];
     
-    for i = 1:size(curve, 1)
-        x = curve(i, 1);
-        y = curve(i, 2);
-        C = [C; min(pdist2([x, y], innerBoundary), [], 2); min(pdist2([x, y], outerBoundary), [], 2)];
-    end
+    % for i = 1:size(curve, 1)
+    %     x = curve(i, 1);
+    %     y = curve(i, 2);
+    %     C = [C; min(pdist2([x, y], innerBoundary), [], 2); min(pdist2([x, y], outerBoundary), [], 2)];
+    % end
 end
 
 % Updated cost function
